@@ -176,6 +176,56 @@ function escapeHtml(value) {
 const missing = required.filter(k => !process.env[k]);
 if (missing.length) console.warn("Missing environment variables:", missing.join(", "));
 
+
+async function setupVerifyMessage() {
+  try {
+    const channels = await discordRequest("/guilds/" + process.env.DISCORD_GUILD_ID + "/channels");
+    const channel = channels.find(c => c.type === 0 && c.name.toLowerCase() === "verify");
+    if (!channel) {
+      console.warn("Verify channel #verify not found. Create a text channel named verify.");
+      return;
+    }
+
+    const marker = "MINHO_VERIFY_PANEL_V1";
+    const messages = await discordRequest("/channels/" + channel.id + "/messages?limit=50");
+    const existing = messages.find(m => m.author?.bot && m.embeds?.some(e => e.footer?.text === marker));
+
+    const payload = {
+      embeds: [{
+        title: "🔐 ยืนยันตัวตน",
+        description: "กดปุ่มด้านล่างเพื่อยืนยันบัญชี Discord ของคุณ\n\nระบบจะตรวจสอบว่าคุณเป็นสมาชิกของเซิร์ฟเวอร์ และมอบยศ **Verified** ให้อัตโนมัติ",
+        color: 0x5865F2,
+        fields: [
+          { name: "🛡️ ปลอดภัย", value: "ระบบไม่ขอรหัสผ่าน Discord ของคุณ", inline: true },
+          { name: "⚡ อัตโนมัติ", value: "ยืนยันเสร็จแล้วได้รับยศทันที", inline: true }
+        ],
+        footer: { text: marker }
+      }],
+      components: [{
+        type: 1,
+        components: [{
+          type: 2,
+          style: 5,
+          label: "ยืนยันด้วย Discord",
+          emoji: { name: "🔵" },
+          url: process.env.BASE_URL + "/verify"
+        }]
+      }]
+    };
+
+    if (existing) {
+      await discordRequest("/channels/" + channel.id + "/messages/" + existing.id, { method: "PATCH", body: JSON.stringify(payload) });
+      console.log("Updated verify panel in #" + channel.name);
+    } else {
+      await discordRequest("/channels/" + channel.id + "/messages", { method: "POST", body: JSON.stringify(payload) });
+      console.log("Created verify panel in #" + channel.name);
+    }
+  } catch (error) {
+    console.error("Verify panel setup failed:", error.data || error);
+  }
+}
+
 app.listen(PORT, "0.0.0.0", () => {
   console.log("Minho Discord Verify running on port " + PORT);
+  setupVerifyMessage();
 });
