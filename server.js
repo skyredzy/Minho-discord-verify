@@ -180,9 +180,9 @@ if (missing.length) console.warn("Missing environment variables:", missing.join(
 async function setupVerifyMessage() {
   try {
     const channels = await discordRequest("/guilds/" + process.env.DISCORD_GUILD_ID + "/channels");
-    const channel = channels.find(c => c.type === 0 && c.name.toLowerCase() === "verify");
+    const channel = channels.find(c => c.type === 0 && c.name.toLowerCase() === "🔐・verify");
     if (!channel) {
-      console.warn("Verify channel #verify not found. Create a text channel named verify.");
+      console.warn("Verify channel 🔐・verify not found. Create a text channel named 🔐・verify.");
       return;
     }
 
