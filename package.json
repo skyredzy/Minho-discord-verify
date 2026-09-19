@@ -1,0 +1,16 @@
+{
+  "name": "minho-discord-verify",
+  "version": "0.1.0",
+  "description": "Discord OAuth2 verification web app for Minho Discord",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "express-session": "^1.18.2"
+  }
+}
