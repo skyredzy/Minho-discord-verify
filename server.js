@@ -16,10 +16,12 @@ const required = [
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.set("trust proxy", 1);
 app.use(session({
   secret: process.env.SESSION_SECRET || "change-me",
   resave: false,
   saveUninitialized: false,
+  proxy: true,
   cookie: {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -69,12 +71,23 @@ app.get("/", (_req, res) => {
 app.get("/verify", (req, res) => {
   const state = cryptoRandom();
   req.session.oauthState = state;
-  res.redirect(discordAuthorizeUrl(state));
+  req.session.save((err) => {
+    if (err) {
+      console.error("Session save failed:", err);
+      return res.status(500).send(errorPage("เริ่มการยืนยันไม่สำเร็จ", "กรุณาลองใหม่อีกครั้ง"));
+    }
+    res.redirect(discordAuthorizeUrl(state));
+  });
 });
 
 app.get("/callback", async (req, res) => {
   try {
     if (!req.query.code || !req.query.state || req.query.state !== req.session.oauthState) {
+      console.error("OAuth state mismatch", {
+        hasCode: Boolean(req.query.code),
+        hasState: Boolean(req.query.state),
+        hasSession: Boolean(req.session.oauthState)
+      });
       return res.status(400).send(errorPage("ลิงก์ยืนยันไม่ถูกต้อง", "กรุณากลับไปเริ่มการยืนยันใหม่อีกครั้ง"));
     }
     delete req.session.oauthState;
@@ -101,9 +114,8 @@ app.get("/callback", async (req, res) => {
     const user = await userRes.json();
     if (!userRes.ok) throw new Error("Could not read Discord user");
 
-    let member;
     try {
-      member = await discordRequest(
+      await discordRequest(
         "/guilds/" + process.env.DISCORD_GUILD_ID + "/members/" + user.id
       );
     } catch (e) {
